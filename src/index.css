@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+html, body, #root { height: 100%; }
+
+body {
+  background:
+    radial-gradient(1000px 600px at 80% -10%, rgba(139,92,246,0.18), transparent 60%),
+    radial-gradient(800px 500px at -10% 20%, rgba(59,130,246,0.15), transparent 60%),
+    radial-gradient(700px 500px at 50% 110%, rgba(236,72,153,0.12), transparent 60%),
+    #05050a;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #0a0a14; }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #8b5cf6, #3b82f6);
+  border-radius: 8px;
+}
+
+.glass {
+  background: linear-gradient(180deg, rgba(22,22,42,0.6), rgba(10,10,20,0.6));
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(168,85,247,0.18);
+}
+
+.gradient-border { position: relative; background: #0a0a14; border-radius: 1rem; }
+.gradient-border::before {
+  content: ""; position: absolute; inset: 0; padding: 1px; border-radius: inherit;
+  background: linear-gradient(135deg, rgba(168,85,247,0.6), rgba(59,130,246,0.4), rgba(236,72,153,0.5));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
+}
+
+.neon-text {
+  background: linear-gradient(90deg, #a855f7, #3b82f6, #ec4899);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(168,85,247,0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(168,85,247,0.08) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
