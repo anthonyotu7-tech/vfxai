@@ -1,18 +1,24 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
-import { Spinner } from '@/components/ui/Loader';
 
-export function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) {
-  const { user, loading } = useAuth();
-  const loc = useLocation();
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Spinner className="h-10 w-10" />
-      </div>
-    );
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+  adminOnly?: boolean;
+}
+
+export function ProtectedRoute({ children, adminOnly = false }: ProtectedRouteProps) {
+  const location = useLocation();
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
+
+  if (!user) {
+    // Not logged in, redirect to login
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
-  if (!user) return <Navigate to="/login" state={{ from: loc }} replace />;
-  if (adminOnly && user.role !== 'admin') return <Navigate to="/dashboard" replace />;
+
+  // If admin-only route, check role
+  if (adminOnly && user.role !== 'admin') {
+    // Not an admin, redirect to dashboard
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return <>{children}</>;
 }
