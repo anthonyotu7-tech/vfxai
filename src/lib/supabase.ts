@@ -1,13 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-// Export this so useAuth.tsx doesn't crash
 export const isSupabaseEnabled = !!(supabaseUrl && supabaseAnonKey);
 
 if (!isSupabaseEnabled) {
-  console.error('❌ Missing Supabase environment variables!');
+  console.warn('⚠️ Supabase environment variables not configured. Using demo mode.');
 }
 
-export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '');
+// Only create client if we have valid values
+export const supabase = isSupabaseEnabled 
+  ? createClient(supabaseUrl, supabaseAnonKey) 
+  : null;
