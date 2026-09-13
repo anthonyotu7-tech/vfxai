@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { LOGO } from '@/lib/brand';
+import { supabase } from '@/lib/supabase';
 
 export default function Login() {
   const { signIn, signInWithGoogle } = useAuth();
@@ -31,9 +32,29 @@ export default function Login() {
     if (!validate()) return;
     setLoading(true);
     try {
-      await signIn(email, password);
+      const { data: user, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .eq('password', password)
+        .single();
+
+      if (error || !user) {
+        push({ type: 'error', title: 'Login failed', description: 'Invalid credentials' });
+        return;
+      }
+
+      // Store user in localStorage
+      localStorage.setItem('user', JSON.stringify(user));
+      
       push({ type: 'success', title: 'Welcome back' });
-      nav('/dashboard');
+      
+      // Redirect based on role
+      if (user.role === 'admin') {
+        nav('/admin');
+      } else {
+        nav('/dashboard');
+      }
     } catch (err: any) {
       push({ type: 'error', title: 'Login failed', description: err?.message || 'Check your credentials.' });
     } finally {
