@@ -31,7 +31,10 @@ export default function LiveStudio() {
           setCameraOn(false);
         });
     } else if (stream) {
-      stream.getTracks().forEach(t => t.stop());
+if (stream) {
+  const tracks = stream.getTracks();
+  tracks.forEach((track) => track.stop());
+}
     }
     return () => { stream?.getTracks().forEach(t => t.stop()); };
     // eslint-disable-next-line react-hooks/exhaustive-deps

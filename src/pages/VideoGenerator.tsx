@@ -75,7 +75,7 @@ export default function VideoGenerator() {
       user_id: 'u1',
       title: prompt.slice(0, 30) + (prompt.length > 30 ? '...' : ''),
       prompt,
-      avatarId,
+      avatar_id: avatarId,
       voice,
       style,
       duration_sec: duration,
