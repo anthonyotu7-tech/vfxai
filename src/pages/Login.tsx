@@ -25,49 +25,55 @@ export default function Login() {
     return Object.keys(e).length === 0;
   };
 
- const submit = async (ev: React.FormEvent) => {
-  ev.preventDefault();
-  if (!validate()) return;
-  
-  setLoading(true);
-  
-  try {
-    // Check if Supabase is configured
-    if (!supabase) {
-      push({ type: 'error', title: 'Configuration error', description: 'Supabase is not configured' });
-      setLoading(false);
-      return;
-    }
-
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', email)
-      .eq('password', password)
-      .single();
-
-    if (error || !user) {
-      push({ type: 'error', title: 'Login failed', description: 'Invalid credentials' });
-      setLoading(false);
-      return;
-    }
-
-    // Store user in localStorage
-    localStorage.setItem('user', JSON.stringify(user));
+  const submit = async (ev: React.FormEvent) => {
+    ev.preventDefault();
+    if (!validate()) return;
     
-    push({ type: 'success', title: 'Welcome back' });
+    setLoading(true);
     
-    // Redirect based on role
-    if (user.role === 'admin') {
-      window.location.href = '/admin';
-    } else {
-      window.location.href = '/dashboard';
+    try {
+      if (!supabase) {
+        push({ type: 'error', title: 'Configuration error', description: 'Supabase is not configured' });
+        setLoading(false);
+        return;
+      }
+
+      console.log('🔍 Searching for user:', { email: email.trim(), password: password.trim() });
+      
+      const { data: user, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email.trim())
+        .eq('password', password.trim())
+        .single();
+
+      console.log('📊 Query result:', { user, error });
+
+      if (error || !user) {
+        console.error('❌ Login error:', error);
+        push({ type: 'error', title: 'Login failed', description: 'Invalid credentials' });
+        setLoading(false);
+        return;
+      }
+
+      // Store user in localStorage
+      localStorage.setItem('user', JSON.stringify(user));
+      
+      push({ type: 'success', title: 'Welcome back' });
+      
+      // Redirect based on role
+      if (user.role === 'admin') {
+        window.location.href = '/admin';
+      } else {
+        window.location.href = '/dashboard';
+      }
+    } catch (err: any) {
+      console.error('💥 Exception:', err);
+      push({ type: 'error', title: 'Login failed', description: err?.message || 'Check your credentials.' });
+      setLoading(false);
     }
-  } catch (err: any) {
-    push({ type: 'error', title: 'Login failed', description: err?.message || 'Check your credentials.' });
-    setLoading(false);
-  }
-};
+  };
+
   return (
     <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-md items-center px-6 py-12">
       <Card className="w-full">
