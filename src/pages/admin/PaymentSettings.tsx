@@ -1,13 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Save, Wallet, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
-import { useToast } from '@/hooks/useToast';
 import { supabase } from '@/lib/supabase';
 
 export default function PaymentSettings() {
-  const { push } = useToast();
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState({
     paymentsEnabled: true,
@@ -46,7 +43,7 @@ export default function PaymentSettings() {
     setLoading(true);
     try {
       if (!supabase) {
-        push({ type: 'error', title: 'Error', description: 'Supabase not configured' });
+        alert('Supabase not configured');
         setLoading(false);
         return;
       }
@@ -67,9 +64,9 @@ export default function PaymentSettings() {
 
       if (error) throw error;
 
-      push({ type: 'success', title: 'Success', description: 'Payment settings saved successfully' });
+      alert('Payment settings saved successfully!');
     } catch (err: any) {
-      push({ type: 'error', title: 'Error', description: err.message });
+      alert('Error: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -92,7 +89,9 @@ export default function PaymentSettings() {
             </div>
             <button
               onClick={() => setSettings({ ...settings, paymentsEnabled: !settings.paymentsEnabled })}
-              className="relative inline-flex h-6 w-11 items-center rounded-full bg-neon-purple transition-colors"
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                settings.paymentsEnabled ? 'bg-neon-purple' : 'bg-gray-600'
+              }`}
             >
               <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
