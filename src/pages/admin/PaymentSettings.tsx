@@ -1,4 +1,4 @@
-import { useState } from 'useEffect';
+import { useState, useEffect } from 'react';
 import { Save, Wallet, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
