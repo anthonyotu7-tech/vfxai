@@ -20,14 +20,14 @@ import VideoCalls from '@/pages/VideoCalls';
 import Credits from '@/pages/Credits';
 import Settings from '@/pages/Settings';
 import About from '@/pages/About';
-import AdminDashboard from '@/pages/admin/Dashboard';
+import AdminDashboard from '@/pages/admin/AdminDashboard';
 import AdminUsers from '@/pages/admin/Users';
 import AdminVideos from '@/pages/admin/Videos';
 import AdminAvatars from '@/pages/admin/Avatars';
-import AdminCredits from '@/pages/admin/Credits';
+import AdminCredits from '@/pages/admin/CreditsAdmin';
 import AdminTransactions from '@/pages/admin/Transactions';
 import AdminSubscriptions from '@/pages/admin/Subscriptions';
-import AdminSettings from '@/pages/admin/Settings';
+import AdminSettings from '@/pages/admin/AdminSettings';
 import AdminPaymentSettings from '@/pages/admin/PaymentSettings';
 
 function App() {
