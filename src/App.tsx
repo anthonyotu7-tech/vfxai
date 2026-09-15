@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from '@/components/ui/Toaster';
 import { AuthProvider } from '@/hooks/useAuth';
-import { ToastProvider } from '@/hooks/useToast';  // Add this import
+import { ToastProvider } from '@/hooks/useToast';
 import { PublicLayout } from '@/components/layout/PublicLayout';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AdminShell } from '@/components/layout/AdminShell';
@@ -36,8 +35,7 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <ToastProvider>  {/* Add this wrapper */}
-          <Toaster />
+        <ToastProvider>
           <Routes>
             {/* Public Routes */}
             <Route element={<PublicLayout />}>
@@ -94,7 +92,7 @@ function App() {
             {/* Catch all */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </ToastProvider>  {/* Close the wrapper */}
+        </ToastProvider>
       </AuthProvider>
     </BrowserRouter>
   );
