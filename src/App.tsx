@@ -22,6 +22,7 @@ import VideoGenerator from '@/pages/VideoGenerator';
 import LiveStudio from '@/pages/LiveStudio';
 import VideoCalls from '@/pages/VideoCalls';
 import Credits from '@/pages/Credits';
+import Deposit from '@/pages/Deposit';
 import Settings from '@/pages/Settings';
 import About from '@/pages/About';
 import AdminDashboard from '@/pages/admin/AdminDashboard';
@@ -70,6 +71,7 @@ function App() {
                 <Route path="live-studio" element={<LiveStudio />} />
                 <Route path="video-calls" element={<VideoCalls />} />
                 <Route path="credits" element={<Credits />} />
+                <Route path="deposit" element={<Deposit />} />
                 <Route path="settings" element={<Settings />} />
               </Route>
 
