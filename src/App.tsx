@@ -1,6 +1,9 @@
+import AdminDepositRequests from '@/pages/admin/DepositRequests';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/Toaster';
 import { AuthProvider } from '@/hooks/useAuth';
+import { ToastProvider } from '@/hooks/useToast';
+import { CreditsProvider } from '@/hooks/useCredits';
 import { PublicLayout } from '@/components/layout/PublicLayout';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AdminShell } from '@/components/layout/AdminShell';
@@ -35,63 +38,68 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Toaster />
-        <Routes>
-          {/* Public Routes */}
-          <Route element={<PublicLayout />}>
-            <Route path="/" element={<Landing />} />
-            <Route path="/features" element={<Features />} />
-            <Route path="/pricing" element={<Pricing />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/about" element={<About />} />
-          </Route>
+        <ToastProvider>
+          <CreditsProvider>
+            <Toaster />
+            <Routes>
+              {/* Public Routes */}
+              <Route element={<PublicLayout />}>
+                <Route path="/" element={<Landing />} />
+                <Route path="/features" element={<Features />} />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<Signup />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/about" element={<About />} />
+              </Route>
 
-          {/* Protected User Routes */}
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <AppLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="videos" element={<MyVideos />} />
-            <Route path="video-editor" element={<VideoEditor />} />
-            <Route path="avatar-studio" element={<AvatarStudio />} />
-            <Route path="video-generator" element={<VideoGenerator />} />
-            <Route path="live-studio" element={<LiveStudio />} />
-            <Route path="video-calls" element={<VideoCalls />} />
-            <Route path="credits" element={<Credits />} />
-            <Route path="settings" element={<Settings />} />
-          </Route>
+              {/* Protected User Routes */}
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="videos" element={<MyVideos />} />
+                <Route path="video-editor" element={<VideoEditor />} />
+                <Route path="avatar-studio" element={<AvatarStudio />} />
+                <Route path="video-generator" element={<VideoGenerator />} />
+                <Route path="live-studio" element={<LiveStudio />} />
+                <Route path="video-calls" element={<VideoCalls />} />
+                <Route path="credits" element={<Credits />} />
+                <Route path="settings" element={<Settings />} />
+              </Route>
 
-          {/* Admin Routes */}
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute adminOnly>
-                <AdminShell />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<Navigate to="/admin/dashboard" replace />} />
-            <Route path="dashboard" element={<AdminDashboard />} />
-            <Route path="users" element={<AdminUsers />} />
-            <Route path="videos" element={<AdminVideos />} />
-            <Route path="avatars" element={<AdminAvatars />} />
-            <Route path="credits" element={<AdminCredits />} />
-            <Route path="transactions" element={<AdminTransactions />} />
-            <Route path="subscriptions" element={<AdminSubscriptions />} />
-            <Route path="settings" element={<AdminSettings />} />
-            <Route path="payment-settings" element={<AdminPaymentSettings />} />
-          </Route>
+              {/* Admin Routes */}
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute adminOnly>
+                    <AdminShell />
+                  </ProtectedRoute>
+                }
+              >
+                <Route index element={<Navigate to="/admin/dashboard" replace />} />
+                <Route path="dashboard" element={<AdminDashboard />} />
+                <Route path="users" element={<AdminUsers />} />
+                <Route path="videos" element={<AdminVideos />} />
+                <Route path="avatars" element={<AdminAvatars />} />
+                <Route path="credits" element={<AdminCredits />} />
+                <Route path="transactions" element={<AdminTransactions />} />
+                <Route path="subscriptions" element={<AdminSubscriptions />} />
+                <Route path="settings" element={<AdminSettings />} />
+                <Route path="payment-settings" element={<AdminPaymentSettings />} />
+                <Route path="deposit-requests" element={<AdminDepositRequests />} />
+              </Route>
 
-          {/* Catch all */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+              {/* Catch all */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </CreditsProvider>
+        </ToastProvider>
       </AuthProvider>
     </BrowserRouter>
   );
