@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Check, X, CreditCard, Zap } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -39,7 +40,17 @@ export default function Credits() {
             {plan.popular && (
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-neon-purple px-3 py-1 text-xs font-bold text-white">
                 MOST POPULAR
-              </div>
+      <div className="mb-8 p-4 rounded-xl bg-gradient-to-r from-neon-purple/20 to-neon-blue/20 border border-neon-purple/30 flex flex-col sm:flex-row items-center justify-between gap-4">
+     <div>
+       <h3 className="text-lg font-bold text-white">Prefer manual payment?</h3>
+       <p className="text-sm text-white/70">Submit a bank or crypto deposit request for manual credit approval.</p>
+     </div>
+     <Link to="/deposit">
+       <Button variant="outline" className="border-neon-purple text-neon-purple hover:bg-neon-purple/10 whitespace-nowrap">
+         Manual Deposit
+       </Button>
+     </Link>
+   </div>          
             )}
             <h3 className="text-xl font-bold text-white">{plan.name}</h3>
             <div className="mt-4 flex items-baseline gap-1">
