@@ -39,22 +39,22 @@ export default function AdminUsers() {
     try {
       if (!supabase) return;
       
-      // Fetch from auth.users with user metadata
       const { data: authData, error: authError } = await supabase
-        .from('users')
-        .select('*')
+        .from('profiles')
+        .select('id, full_name, email, username, phone, plan, credits, status, created_at')
         .order('created_at', { ascending: false });
 
       if (authError) throw authError;
       
-      setUsers(authData || []);
+      const formattedUsers = (authData || []).map((u: any) => ({
+        ...u,
+        name: u.full_name || 'Unknown'
+      }));
+      
+      setUsers(formattedUsers);
     } catch (err: any) {
       console.error('Error loading users:', err);
-      push({ 
-        type: 'error', 
-        title: 'Error Loading Users', 
-        description: err.message 
-      });
+      push({ type: 'error', title: 'Error Loading Users', description: err.message });
     } finally {
       setLoading(false);
     }
@@ -71,45 +71,23 @@ export default function AdminUsers() {
       const addAmount = parseInt(amount);
       const newBalance = (modal.user.credits || 0) + addAmount;
       
-      // Update user credits
       const { error: updateError } = await supabase!
-        .from('users')
-        .update({ 
-          credits: newBalance,
-          updated_at: new Date().toISOString()
-        })
+        .from('profiles')
+        .update({ credits: newBalance, updated_at: new Date().toISOString() })
         .eq('id', modal.user.id);
 
       if (updateError) throw updateError;
 
-      // Record transaction
-      const { error: transError } = await supabase!
-        .from('admin_transactions')
+      await supabase!
+        .from('credit_transactions')
         .insert({
           user_id: modal.user.id,
-          admin_id: (await supabase!.auth.getUser()).data.user?.id,
-          type: 'credit_add',
           amount: addAmount,
-          previous_balance: modal.user.credits || 0,
-          new_balance: newBalance,
-          description: description || 'Credit added by admin',
+          reason: description || 'Credit added by admin',
         });
 
-      if (transError) {
-        console.error('Transaction error:', transError);
-        // Don't fail if transaction recording fails
-      }
-
-      push({ 
-        type: 'success', 
-        title: 'Success', 
-        description: `Added ${addAmount} credits to ${modal.user.email}` 
-      });
-      
-      setModal(null);
-      setAmount('');
-      setDescription('');
-      loadUsers();
+      push({ type: 'success', title: 'Success', description: `Added ${addAmount} credits to ${modal.user.email}` });
+      setModal(null); setAmount(''); setDescription(''); loadUsers();
     } catch (err: any) {
       push({ type: 'error', title: 'Error', description: err.message });
     } finally {
@@ -134,41 +112,22 @@ export default function AdminUsers() {
       const newBalance = (modal.user.credits || 0) - deductAmount;
       
       const { error: updateError } = await supabase!
-        .from('users')
-        .update({ 
-          credits: newBalance,
-          updated_at: new Date().toISOString()
-        })
+        .from('profiles')
+        .update({ credits: newBalance, updated_at: new Date().toISOString() })
         .eq('id', modal.user.id);
 
       if (updateError) throw updateError;
 
-      const { error: transError } = await supabase!
-        .from('admin_transactions')
+      await supabase!
+        .from('credit_transactions')
         .insert({
           user_id: modal.user.id,
-          admin_id: (await supabase!.auth.getUser()).data.user?.id,
-          type: 'credit_deduct',
-          amount: deductAmount,
-          previous_balance: modal.user.credits || 0,
-          new_balance: newBalance,
-          description: description || 'Credit deducted by admin',
+          amount: -deductAmount,
+          reason: description || 'Credit deducted by admin',
         });
 
-      if (transError) {
-        console.error('Transaction error:', transError);
-      }
-
-      push({ 
-        type: 'success', 
-        title: 'Success', 
-        description: `Deducted ${deductAmount} credits from ${modal.user.email}` 
-      });
-      
-      setModal(null);
-      setAmount('');
-      setDescription('');
-      loadUsers();
+      push({ type: 'success', title: 'Success', description: `Deducted ${deductAmount} credits from ${modal.user.email}` });
+      setModal(null); setAmount(''); setDescription(''); loadUsers();
     } catch (err: any) {
       push({ type: 'error', title: 'Error', description: err.message });
     } finally {
@@ -181,27 +140,24 @@ export default function AdminUsers() {
     
     setProcessing(true);
     try {
-      const updateData: any = {
-        updated_at: new Date().toISOString(),
-      };
+      const updateData: any = { updated_at: new Date().toISOString() };
       
-      if (editForm.name !== undefined) updateData.name = editForm.name;
+      if (editForm.name !== undefined) updateData.full_name = editForm.name;
       if (editForm.email !== undefined) updateData.email = editForm.email;
       if (editForm.status !== undefined) updateData.status = editForm.status;
       if (editForm.phone !== undefined) updateData.phone = editForm.phone;
       if (editForm.username !== undefined) updateData.username = editForm.username;
+      if (editForm.plan !== undefined) updateData.plan = editForm.plan;
 
       const { error } = await supabase!
-        .from('users')
+        .from('profiles')
         .update(updateData)
         .eq('id', modal.user.id);
 
       if (error) throw error;
 
       push({ type: 'success', title: 'Success', description: 'User updated successfully' });
-      setModal(null);
-      setEditForm({});
-      loadUsers();
+      setModal(null); setEditForm({}); loadUsers();
     } catch (err: any) {
       push({ type: 'error', title: 'Error', description: err.message });
     } finally {
@@ -219,6 +175,7 @@ export default function AdminUsers() {
       status: user.status,
       phone: user.phone,
       username: user.username,
+      plan: user.plan,
     });
   };
 
@@ -284,25 +241,13 @@ export default function AdminUsers() {
                     </td>
                     <td className="p-4">
                       <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => openModal('add', user)}
-                          className="p-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors"
-                          title="Add Credits"
-                        >
+                        <button onClick={() => openModal('add', user)} className="p-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors" title="Add Credits">
                           <Plus className="h-4 w-4" />
                         </button>
-                        <button
-                          onClick={() => openModal('deduct', user)}
-                          className="p-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
-                          title="Deduct Credits"
-                        >
+                        <button onClick={() => openModal('deduct', user)} className="p-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors" title="Deduct Credits">
                           <Minus className="h-4 w-4" />
                         </button>
-                        <button
-                          onClick={() => openModal('edit', user)}
-                          className="p-2 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors"
-                          title="Edit User"
-                        >
+                        <button onClick={() => openModal('edit', user)} className="p-2 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors" title="Edit User">
                           <Edit2 className="h-4 w-4" />
                         </button>
                       </div>
@@ -315,20 +260,16 @@ export default function AdminUsers() {
         </div>
       </Card>
 
-      {/* Modal */}
       {modal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-gray-900 border border-white/10 rounded-xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-white">
                 {modal.type === 'add' && '➕ Add Credits'}
-                {modal.type === 'deduct' && ' Deduct Credits'}
-                {modal.type === 'edit' && '✏️ Edit User'}
+                {modal.type === 'deduct' && '➖ Deduct Credits'}
+                {modal.type === 'edit' && '️ Edit User'}
               </h3>
-              <button
-                onClick={() => setModal(null)}
-                className="text-white/60 hover:text-white transition-colors"
-              >
+              <button onClick={() => setModal(null)} className="text-white/60 hover:text-white transition-colors">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -345,54 +286,24 @@ export default function AdminUsers() {
             {(modal.type === 'add' || modal.type === 'deduct') && (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-white mb-2">
-                    Amount <span className="text-white/60">(credits)</span>
-                  </label>
-                  <Input
-                    type="number"
-                    min="1"
-                    placeholder="Enter amount"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    className="w-full"
-                    autoFocus
-                  />
+                  <label className="block text-sm font-medium text-white mb-2">Amount <span className="text-white/60">(credits)</span></label>
+                  <Input type="number" min="1" placeholder="Enter amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full" autoFocus />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-white mb-2">
-                    Description <span className="text-white/60">(optional)</span>
-                  </label>
-                  <Input
-                    type="text"
-                    placeholder="Reason for this transaction"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    className="w-full"
-                  />
+                  <label className="block text-sm font-medium text-white mb-2">Description <span className="text-white/60">(optional)</span></label>
+                  <Input type="text" placeholder="Reason for this transaction" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full" />
                 </div>
                 {modal.type === 'deduct' && (
                   <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                    <p className="text-yellow-400 text-sm">
-                      ⚠️ Cannot deduct more than current balance
-                    </p>
+                    <p className="text-yellow-400 text-sm">⚠️ Cannot deduct more than current balance</p>
                   </div>
                 )}
                 <div className="flex gap-3 pt-2">
-                  <Button
-                    onClick={modal.type === 'add' ? handleAddCredit : handleDeductCredit}
-                    loading={processing}
-                    className="flex-1 bg-gradient-to-r from-neon-purple to-neon-blue"
-                  >
+                  <Button onClick={modal.type === 'add' ? handleAddCredit : handleDeductCredit} loading={processing} className="flex-1 bg-gradient-to-r from-neon-purple to-neon-blue">
                     <Check className="h-4 w-4 mr-2" />
                     {modal.type === 'add' ? 'Add Credits' : 'Deduct Credits'}
                   </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setModal(null)}
-                    className="flex-1"
-                  >
-                    Cancel
-                  </Button>
+                  <Button variant="outline" onClick={() => setModal(null)} className="flex-1">Cancel</Button>
                 </div>
               </div>
             )}
@@ -401,68 +312,42 @@ export default function AdminUsers() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-white mb-2">Full Name</label>
-                  <Input
-                    type="text"
-                    value={editForm.name || ''}
-                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                    className="w-full"
-                  />
+                  <Input type="text" value={editForm.name || ''} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="w-full" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-white mb-2">Email</label>
-                  <Input
-                    type="email"
-                    value={editForm.email || ''}
-                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                    className="w-full"
-                  />
+                  <Input type="email" value={editForm.email || ''} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} className="w-full" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-white mb-2">Username</label>
-                  <Input
-                    type="text"
-                    value={editForm.username || ''}
-                    onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
-                    className="w-full"
-                  />
+                  <Input type="text" value={editForm.username || ''} onChange={(e) => setEditForm({ ...editForm, username: e.target.value })} className="w-full" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-white mb-2">Phone</label>
-                  <Input
-                    type="text"
-                    value={editForm.phone || ''}
-                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                    className="w-full"
-                  />
+                  <Input type="text" value={editForm.phone || ''} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} className="w-full" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-white mb-2">Plan</label>
+                  <select value={editForm.plan || 'free'} onChange={(e) => setEditForm({ ...editForm, plan: e.target.value })} className="w-full bg-gray-800 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-neon-purple">
+                    <option value="free">Free</option>
+                    <option value="creator">Creator</option>
+                    <option value="pro">Pro</option>
+                    <option value="studio">Studio</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-white mb-2">Status</label>
-                  <select
-                    value={editForm.status || 'active'}
-                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                    className="w-full bg-gray-800 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-neon-purple"
-                  >
+                  <select value={editForm.status || 'active'} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })} className="w-full bg-gray-800 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-neon-purple">
                     <option value="active">Active</option>
                     <option value="suspended">Suspended</option>
                     <option value="pending">Pending</option>
                   </select>
                 </div>
                 <div className="flex gap-3 pt-2">
-                  <Button
-                    onClick={handleEditUser}
-                    loading={processing}
-                    className="flex-1 bg-gradient-to-r from-neon-purple to-neon-blue"
-                  >
-                    <Check className="h-4 w-4 mr-2" />
-                    Save Changes
+                  <Button onClick={handleEditUser} loading={processing} className="flex-1 bg-gradient-to-r from-neon-purple to-neon-blue">
+                    <Check className="h-4 w-4 mr-2" /> Save Changes
                   </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setModal(null)}
-                    className="flex-1"
-                  >
-                    Cancel
-                  </Button>
+                  <Button variant="outline" onClick={() => setModal(null)} className="flex-1">Cancel</Button>
                 </div>
               </div>
             )}
