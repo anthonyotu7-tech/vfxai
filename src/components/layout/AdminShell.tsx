@@ -20,7 +20,7 @@ const items = [
 export function AdminShell() {
   const { signOut } = useAuth();
   const nav = useNavigate();
-  { icon: DollarSign, label: 'Deposits', path: '/admin/deposit-requests' }
+  { icon: DollarSign, label: 'Deposits', path: '/admin/deposit-requests' },
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
