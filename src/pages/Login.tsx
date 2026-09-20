@@ -69,7 +69,7 @@ export default function Login() {
         </form>
 
         <p className="text-center text-white/60 text-sm mt-6">
-          Don't have an account? <Link to="/signup" className="text-neon-purple hover:underline">Sign up</Link>
+          Don't have an account? <Link to="/signup" className="text-neon-purple hover:underline">Signup</Link>
         </p>
       </div>
     </div>
