@@ -83,7 +83,7 @@ export function AdminShell() {
           </div>
 
           <nav className="space-y-1">
-            {navItems.map((item) => {
+            {(navItems || []).map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
               return (
