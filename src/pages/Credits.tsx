@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { CreditCard, Check, Sparkles, Zap, Crown, Loader2 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -39,19 +39,11 @@ const plans = [
 export default function Credits() {
   const { push } = useToast();
   const { credits, refresh } = useCredits();
-  const [loading, setLoading] = useState<string | null>(null);
   const [checkoutPlan, setCheckoutPlan] = useState<any>(null);
   const [cardNumber, setCardNumber] = useState('');
   const [expiry, setExpiry] = useState('');
   const [cvc, setCvc] = useState('');
   const [processing, setProcessing] = useState(false);
-
-  const handleCheckout = (plan: any) => {
-    setCheckoutPlan(plan);
-    setCardNumber('');
-    setExpiry('');
-    setCvc('');
-  };
 
   const handlePayment = async () => {
     if (!cardNumber.trim() || !expiry.trim() || !cvc.trim()) {
@@ -61,11 +53,8 @@ export default function Credits() {
 
     setProcessing(true);
     try {
-      // Simulate payment processing
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // In production, this would call Stripe/PayPal API
-      // For now, we'll add credits directly
       if (supabase) {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
@@ -117,11 +106,7 @@ export default function Credits() {
           return (
             <Card 
               key={plan.id} 
-              className={`p-6 relative ${
-                plan.popular 
-                  ? 'border-2 border-neon-purple bg-gradient-to-br from-neon-purple/10 to-transparent' 
-                  : 'border border-white/10'
-              }`}
+              className={`p-6 relative ${plan.popular ? 'border-2 border-neon-purple bg-gradient-to-br from-neon-purple/10 to-transparent' : 'border border-white/10'}`}
             >
               {plan.popular && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-neon-purple text-white text-xs font-bold rounded-full">
@@ -151,13 +136,8 @@ export default function Credits() {
               </ul>
 
               <Button 
-                onClick={() => handleCheckout(plan)}
-                loading={loading === plan.id}
-                className={`w-full ${
-                  plan.popular 
-                    ? 'bg-gradient-to-r from-neon-purple to-neon-blue' 
-                    : 'bg-white/10 hover:bg-white/20'
-                }`}
+                onClick={() => setCheckoutPlan(plan)}
+                className={`w-full ${plan.popular ? 'bg-gradient-to-r from-neon-purple to-neon-blue' : 'bg-white/10 hover:bg-white/20'}`}
               >
                 Get {plan.name}
               </Button>
@@ -166,18 +146,12 @@ export default function Credits() {
         })}
       </div>
 
-      {/* Checkout Modal */}
       {checkoutPlan && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-gray-900 border border-white/10 rounded-xl p-6 max-w-md w-full">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-white">Checkout</h3>
-              <button
-                onClick={() => setCheckoutPlan(null)}
-                className="text-white/60 hover:text-white"
-              >
-                ✕
-              </button>
+              <button onClick={() => setCheckoutPlan(null)} className="text-white/60 hover:text-white"></button>
             </div>
 
             <div className="mb-6 p-4 bg-white/5 rounded-lg">
