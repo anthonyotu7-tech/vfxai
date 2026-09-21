@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from '@/components/ui/Toaster';
 import { AuthProvider } from '@/hooks/useAuth';
 import { ToastProvider } from '@/hooks/useToast';
 import { CreditsProvider } from '@/hooks/useCredits';
@@ -39,7 +38,7 @@ function App() {
       <AuthProvider>
         <ToastProvider>
           <CreditsProvider>
-            <Toaster />
+            {/* REMOVED <Toaster /> HERE - IT WAS CAUSING THE GLOBAL .map() CRASH */}
             <Routes>
               {/* Public Routes */}
               <Route element={<PublicLayout />}>
