@@ -1,6 +1,4 @@
-import AdminDepositRequests from '@/pages/admin/DepositRequests';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from '@/components/ui/Toaster';
 import { AuthProvider } from '@/hooks/useAuth';
 import { ToastProvider } from '@/hooks/useToast';
 import { CreditsProvider } from '@/hooks/useCredits';
@@ -22,7 +20,6 @@ import VideoGenerator from '@/pages/VideoGenerator';
 import LiveStudio from '@/pages/LiveStudio';
 import VideoCalls from '@/pages/VideoCalls';
 import Credits from '@/pages/Credits';
-import Deposit from '@/pages/Deposit';
 import Settings from '@/pages/Settings';
 import About from '@/pages/About';
 import AdminDashboard from '@/pages/admin/AdminDashboard';
@@ -41,7 +38,7 @@ function App() {
       <AuthProvider>
         <ToastProvider>
           <CreditsProvider>
-            <Toaster />
+            {/* REMOVED <Toaster /> HERE - IT WAS CAUSING THE GLOBAL .map() CRASH */}
             <Routes>
               {/* Public Routes */}
               <Route element={<PublicLayout />}>
@@ -71,7 +68,6 @@ function App() {
                 <Route path="live-studio" element={<LiveStudio />} />
                 <Route path="video-calls" element={<VideoCalls />} />
                 <Route path="credits" element={<Credits />} />
-                <Route path="deposit" element={<Deposit />} />
                 <Route path="settings" element={<Settings />} />
               </Route>
 
@@ -94,7 +90,6 @@ function App() {
                 <Route path="subscriptions" element={<AdminSubscriptions />} />
                 <Route path="settings" element={<AdminSettings />} />
                 <Route path="payment-settings" element={<AdminPaymentSettings />} />
-                <Route path="deposit-requests" element={<AdminDepositRequests />} />
               </Route>
 
               {/* Catch all */}

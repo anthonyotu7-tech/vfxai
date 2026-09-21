@@ -1,118 +1,77 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Card } from '@/components/ui/Card';
-import { useToast } from '@/hooks/useToast';
-import { LOGO } from '@/lib/brand';
-import { supabase } from '@/lib/supabase';
+import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function Login() {
-  const { push } = useToast();
-  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [error, setError] = useState('');
+  const { signIn } = useAuth();
+  const nav = useNavigate();
 
-  const validate = () => {
-    const e: typeof errors = {};
-    if (!email) e.email = 'Email is required';
-    else if (!/^\S+@\S+\.\S+$/.test(email)) e.email = 'Enter a valid email';
-    if (!password) e.password = 'Password is required';
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  };
-
-  const submit = async (ev: React.FormEvent) => {
-    ev.preventDefault();
-    if (!validate()) return;
-    
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
     setLoading(true);
-    
     try {
-      if (!supabase) {
-        push({ type: 'error', title: 'Configuration error', description: 'Supabase is not configured' });
-        setLoading(false);
-        return;
-      }
-
-      console.log('🔍 Searching for user:', { email: email.trim(), password: password.trim() });
-      
-      const { data: user, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('email', email.trim())
-        .eq('password', password.trim())
-        .single();
-
-      console.log('📊 Query result:', { user, error });
-
-      if (error || !user) {
-        console.error('❌ Login error:', error);
-        push({ type: 'error', title: 'Login failed', description: 'Invalid credentials' });
-        setLoading(false);
-        return;
-      }
-
-      // Store user in localStorage
-      localStorage.setItem('user', JSON.stringify(user));
-      
-      push({ type: 'success', title: 'Welcome back' });
-      
-      // Redirect based on role
-      if (user.role === 'admin') {
-        window.location.href = '/admin';
-      } else {
-        window.location.href = '/dashboard';
-      }
+      await signIn(email, password);
+      nav('/admin/dashboard');
     } catch (err: any) {
-      console.error('💥 Exception:', err);
-      push({ type: 'error', title: 'Login failed', description: err?.message || 'Check your credentials.' });
+      setError(err.message || 'Login failed');
+    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-md items-center px-6 py-12">
-      <Card className="w-full">
-        <div className="flex justify-center mb-5"><LOGO /></div>
-        <h1 className="text-center text-2xl font-bold">Welcome back</h1>
-        <p className="mt-1 text-center text-sm text-white/60">Log in to continue creating.</p>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 p-4">
+      <div className="w-full max-w-md bg-gray-900/80 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
+        <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
+        <p className="text-white/60 mb-6">Sign in to your account</p>
+        
+        {error && (
+          <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm">
+            {error}
+          </div>
+        )}
 
-        <form onSubmit={submit} className="mt-6 space-y-4">
-          <Input 
-            label="Email" 
-            type="email" 
-            placeholder="you@example.com" 
-            value={email}
-            onChange={e => setEmail(e.target.value)} 
-            error={errors.email} 
-            icon={<Mail className="h-4 w-4" />} 
-          />
-          <Input 
-            label="Password" 
-            type="password" 
-            placeholder="••••••••" 
-            value={password}
-            onChange={e => setPassword(e.target.value)} 
-            error={errors.password} 
-            icon={<Lock className="h-4 w-4" />} 
-          />
-          
-          <Button type="submit" loading={loading} className="w-full" size="lg">
-            Log in
-          </Button>
+        <form onSubmit={handleLogin} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-white mb-2">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full bg-gray-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-neon-purple"
+              placeholder="admin@admin.com"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-white mb-2">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full bg-gray-800 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-neon-purple"
+              placeholder="admin123"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-neon-purple to-neon-blue text-white font-bold py-3 rounded-lg hover:opacity-90 disabled:opacity-50"
+          >
+            {loading ? 'Signing in...' : 'Sign In'}
+          </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-white/60">
-          Don't have an account?{' '}
-          <Link to="/signup" className="text-neon-purple hover:underline font-medium">
-            Create account
-          </Link>
+        <p className="text-center text-white/60 text-sm mt-6">
+          Don't have an account? <Link to="/signup" className="text-neon-purple hover:underline">Signup</Link>
         </p>
-      </Card>
+      </div>
     </div>
   );
 }
