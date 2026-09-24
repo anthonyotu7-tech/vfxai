@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { VIDEO_MODELS } from '../../src/lib/video-providers/config';
+import { VIDEO_MODELS } from '../lib/video-providers/config';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
