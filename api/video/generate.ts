@@ -1,5 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
+// ⚠️ TEMPORARY: Replace with your actual user ID from Supabase
+const TEST_USER_ID = '7ad026ce-d69f-44a0-a016-b137526d0d9a';
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -13,15 +16,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!REPLICATE_API_TOKEN) return res.status(500).json({ error: 'Replicate API token not configured' });
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return res.status(500).json({ error: 'Supabase not configured' });
 
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    if (!token) return res.status(401).json({ error: 'No auth token' });
-
-    const authResponse = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers: { 'Authorization': `Bearer ${token}`, 'apikey': SUPABASE_SERVICE_ROLE_KEY },
-    });
-    if (!authResponse.ok) return res.status(401).json({ error: 'Invalid token' });
-    const userData = await authResponse.json();
-    const userId = userData.id;
+    // ⚠️ TEMPORARY: Use test user ID instead of validating token
+    const userId = TEST_USER_ID;
 
     const body = req.body;
     const { prompt, duration = 5, aspectRatio = '16:9' } = body;
@@ -36,7 +32,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!creditsData || creditsData.length === 0) return res.status(404).json({ error: 'User not found' });
 
     const userCredits = creditsData[0].credits;
-    if (userCredits < totalCostCredits) return res.status(400).json({ error: 'Insufficient credits' });
+    if (userCredits < totalCostCredits) return res.status(400).json({ error: `Insufficient credits. Need ${totalCostCredits}, have ${userCredits}` });
 
     const replicateResponse = await fetch('https://api.replicate.com/v1/predictions', {
       method: 'POST',

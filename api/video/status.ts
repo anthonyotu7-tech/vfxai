@@ -1,5 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
+const TEST_USER_ID = '7ad026ce-d69f-44a0-a016-b137526d0d9a';
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -14,15 +16,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const predictionId = req.query.id as string;
     if (!predictionId) return res.status(400).json({ error: 'Missing prediction ID' });
 
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    if (!token) return res.status(401).json({ error: 'No auth token' });
-
-    const authResponse = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers: { 'Authorization': `Bearer ${token}`, 'apikey': SUPABASE_SERVICE_ROLE_KEY },
-    });
-    if (!authResponse.ok) return res.status(401).json({ error: 'Invalid token' });
-    const userData = await authResponse.json();
-    const userId = userData.id;
+    const userId = TEST_USER_ID;
 
     const genResponse = await fetch(`${SUPABASE_URL}/rest/v1/video_generations?prediction_id=eq.${predictionId}&user_id=eq.${userId}&select=*`, {
       headers: { 'apikey': SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
