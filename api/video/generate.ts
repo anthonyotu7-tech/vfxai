@@ -29,22 +29,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Call Replicate API
     console.log('Calling Replicate API...');
-    const replicateResponse = await fetch('https://api.replicate.com/v1/predictions', {
-      method: 'POST',
-      headers: { 
-        'Authorization': `Token ${REPLICATE_API_TOKEN}`, 
-        'Content-Type': 'application/json' 
-      },
-      body: JSON.stringify({ 
-        model: 'runwayml/gen4-turbo', 
-        input: { 
-          prompt, 
-          duration, 
-          aspect_ratio: aspectRatio 
-        } 
-      })
-    });
-
+   const replicateResponse = await fetch('https://api.replicate.com/v1/models/runwayml/gen4-turbo/predictions', {
+  method: 'POST',
+  headers: { 
+    'Authorization': `Token ${REPLICATE_API_TOKEN}`, 
+    'Content-Type': 'application/json' 
+  },
+  body: JSON.stringify({ 
+    input: { 
+      prompt, 
+      duration, 
+      aspect_ratio: aspectRatio 
+    } 
+  })
+});
     if (!replicateResponse.ok) {
       const errorText = await replicateResponse.text();
       console.error('Replicate error:', errorText);
