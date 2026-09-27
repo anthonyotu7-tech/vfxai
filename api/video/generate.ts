@@ -16,7 +16,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!REPLICATE_API_TOKEN) return res.status(500).json({ error: 'Replicate API token not configured' });
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return res.status(500).json({ error: 'Supabase not configured' });
 
-    // ⚠️ TEMPORARY: Use test user ID instead of validating token
     const userId = TEST_USER_ID;
 
     const body = req.body;
@@ -25,40 +24,66 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const totalCostCredits = Math.ceil(duration * 5);
 
-    const creditsResponse = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=credits`, {
-      headers: { 'apikey': SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
-    });
-    const creditsData = await creditsResponse.json();
-    if (!creditsData || creditsData.length === 0) return res.status(404).json({ error: 'User not found' });
+    // ⚠️ TEMPORARY: Skip credits check - just log it
+    console.log(`User ${userId} generating video, would cost ${totalCostCredits} credits`);
 
-    const userCredits = creditsData[0].credits;
-    if (userCredits < totalCostCredits) return res.status(400).json({ error: `Insufficient credits. Need ${totalCostCredits}, have ${userCredits}` });
-
+    // Call Replicate API
+    console.log('Calling Replicate API...');
     const replicateResponse = await fetch('https://api.replicate.com/v1/predictions', {
       method: 'POST',
-      headers: { 'Authorization': `Token ${REPLICATE_API_TOKEN}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'runwayml/gen4-turbo', input: { prompt, duration, aspect_ratio: aspectRatio } })
+      headers: { 
+        'Authorization': `Token ${REPLICATE_API_TOKEN}`, 
+        'Content-Type': 'application/json' 
+      },
+      body: JSON.stringify({ 
+        model: 'runwayml/gen4-turbo', 
+        input: { 
+          prompt, 
+          duration, 
+          aspect_ratio: aspectRatio 
+        } 
+      })
     });
 
     if (!replicateResponse.ok) {
       const errorText = await replicateResponse.text();
+      console.error('Replicate error:', errorText);
       return res.status(500).json({ error: `Replicate error: ${errorText}` });
     }
+    
     const replicateData = await replicateResponse.json();
+    console.log('Replicate response:', replicateData);
 
-    await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}`, {
-      method: 'PATCH',
-      headers: { 'apikey': SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ credits: userCredits - totalCostCredits }),
+    // Try to save generation record (but don't fail if it doesn't work)
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/video_generations`, {
+        method: 'POST',
+        headers: { 
+          'apikey': SUPABASE_SERVICE_ROLE_KEY, 
+          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, 
+          'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify({ 
+          user_id: userId, 
+          model_id: 'runway-gen4-turbo', 
+          prompt, 
+          duration, 
+          aspect_ratio: aspectRatio, 
+          prediction_id: replicateData.id, 
+          status: 'queued', 
+          credits_deducted: totalCostCredits 
+        }),
+      });
+    } catch (dbError) {
+      console.log('Could not save to database, but continuing:', dbError);
+    }
+
+    return res.status(200).json({ 
+      success: true, 
+      predictionId: replicateData.id,
+      message: 'Video generation started (credits check bypassed for testing)'
     });
-
-    await fetch(`${SUPABASE_URL}/rest/v1/video_generations`, {
-      method: 'POST',
-      headers: { 'apikey': SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: userId, model_id: 'runway-gen4-turbo', prompt, duration, aspect_ratio: aspectRatio, prediction_id: replicateData.id, status: 'queued', credits_deducted: totalCostCredits }),
-    });
-
-    return res.status(200).json({ success: true, predictionId: replicateData.id });
+    
   } catch (error: any) {
     console.error('Error:', error);
     return res.status(500).json({ error: error.message });
