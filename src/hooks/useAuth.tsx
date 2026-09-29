@@ -85,11 +85,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('vfxai.demo.user', JSON.stringify(u));
       return;
     }
-    const { error } = await supabase!.auth.signUp({
+    
+    // 1. Create the user in Supabase Auth
+    const { data: authData, error: authError } = await supabase!.auth.signUp({
       email: p.email, password: p.password,
       options: { data: { full_name: p.full_name, username: p.username } },
     });
-    if (error) throw error;
+    
+    if (authError) throw authError;
+
+    // 2. Manually add them to the 'users' table with 100 credits
+    if (authData.user) {
+      const { error: dbError } = await supabase!.from('users').insert({
+        id: authData.user.id,
+        email: p.email,
+        full_name: p.full_name,
+        username: p.username,
+        credits: 100,
+        role: 'user'
+      });
+      
+      // If there is an error (like duplicate), we just log it so the signup doesn't crash
+      if (dbError) {
+        console.error("Database insert error:", dbError);
+      }
+    }
   }, []);
 
   const signOut = useCallback(async () => {
