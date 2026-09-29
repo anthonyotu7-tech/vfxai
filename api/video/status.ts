@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const TEST_USER_ID = '7ad026ce-d69f-44a0-a016-b137526d0d9a';
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
   try {
     const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN;
@@ -14,73 +14,114 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return res.status(500).json({ error: 'Supabase not configured' });
 
     const predictionId = req.query.id as string;
-    if (!predictionId) return res.status(400).json({ error: 'Missing prediction ID' });
-
-    const userId = TEST_USER_ID;
-
-    // Try to get generation from database
-    let generation: any = null;
-    try {
-      const genResponse = await fetch(`${SUPABASE_URL}/rest/v1/video_generations?prediction_id=eq.${predictionId}&user_id=eq.${userId}&select=*`, {
-        headers: { 'apikey': SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
-      });
-      const genData = await genResponse.json();
-      if (genData && genData.length > 0) {
-        generation = genData[0];
-      }
-    } catch (dbError) {
-      console.log('Could not query database, checking Replicate directly');
+    if (!predictionId) {
+      return res.status(400).json({ error: 'Missing prediction ID' });
     }
 
-    // If not in database or still processing, check Replicate directly
-    if (!generation || generation.status === 'queued' || generation.status === 'processing') {
-      console.log('Checking Replicate status for:', predictionId);
-      const replicateResponse = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
-        headers: { 'Authorization': `Token ${REPLICATE_API_TOKEN}` },
+    // 1. Get the real user's token from the request headers
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ error: 'No auth token provided. Please log in.' });
+    }
+
+    // 2. Verify the token with Supabase to get the real User ID
+    const authResponse = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { 
+        'Authorization': `Bearer ${token}`, 
+        'apikey': SUPABASE_SERVICE_ROLE_KEY 
+      },
+    });
+
+    if (!authResponse.ok) {
+      return res.status(401).json({ error: 'Invalid or expired session. Please log in again.' });
+    }
+
+    const userData = await authResponse.json();
+    const userId = userData.id;
+
+    // 3. Check if this generation belongs to THIS specific user (Security!)
+    const genResponse = await fetch(`${SUPABASE_URL}/rest/v1/video_generations?prediction_id=eq.${predictionId}&user_id=eq.${userId}&select=*`, {
+      headers: { 
+        'apikey': SUPABASE_SERVICE_ROLE_KEY, 
+        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` 
+      },
+    });
+    
+    const genData = await genResponse.json();
+    if (!genData || genData.length === 0) {
+      return res.status(404).json({ error: 'Generation not found or access denied' });
+    }
+    
+    const generation = genData[0];
+
+    // 4. If already succeeded or failed, return it directly from our database
+    if (generation.status === 'succeeded' || generation.status === 'failed') {
+      return res.status(200).json(generation);
+    }
+
+    // 5. If still processing, check Replicate for the latest status
+    const replicateResponse = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
+      headers: { 'Authorization': `Token ${REPLICATE_API_TOKEN}` },
+    });
+
+    if (!replicateResponse.ok) {
+      return res.status(500).json({ error: 'Failed to fetch prediction status from Replicate' });
+    }
+
+    const replicateData = await replicateResponse.json();
+
+    let newStatus = 'processing';
+    if (replicateData.status === 'starting') newStatus = 'queued';
+    else if (replicateData.status === 'succeeded') newStatus = 'succeeded';
+    else if (replicateData.status === 'failed') newStatus = 'failed';
+
+    // 6. Update the database if the status has changed
+    if (newStatus !== generation.status) {
+      const updateData: any = { status: newStatus };
+      if (replicateData.output) updateData.video_url = replicateData.output;
+      if (replicateData.error) updateData.error_message = replicateData.error;
+
+      await fetch(`${SUPABASE_URL}/rest/v1/video_generations?id=eq.${generation.id}`, {
+        method: 'PATCH',
+        headers: { 
+          'apikey': SUPABASE_SERVICE_ROLE_KEY, 
+          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, 
+          'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify(updateData),
       });
-      
-      if (!replicateResponse.ok) {
-        return res.status(500).json({ error: 'Failed to fetch prediction status' });
-      }
-      
-      const replicateData = await replicateResponse.json();
-      console.log('Replicate status:', replicateData.status);
 
-      let newStatus = 'processing';
-      if (replicateData.status === 'starting') newStatus = 'queued';
-      else if (replicateData.status === 'succeeded') newStatus = 'succeeded';
-      else if (replicateData.status === 'failed') newStatus = 'failed';
-
-      // Try to update database
-      if (generation) {
-        try {
-          const updateData: any = { status: newStatus };
-          if (replicateData.output) updateData.video_url = replicateData.output;
-          if (replicateData.error) updateData.error_message = replicateData.error;
-
-          await fetch(`${SUPABASE_URL}/rest/v1/video_generations?id=eq.${generation.id}`, {
+      // 7. If it failed, refund the credits to the user automatically!
+      if (newStatus === 'failed' && generation.credits_deducted > 0) {
+        const userRes = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=credits`, {
+          headers: { 
+            'apikey': SUPABASE_SERVICE_ROLE_KEY, 
+            'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` 
+          },
+        });
+        const userData2 = await userRes.json();
+        if (userData2 && userData2.length > 0) {
+          await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}`, {
             method: 'PATCH',
-            headers: { 'apikey': SUPABASE_SERVICE_ROLE_KEY, 'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify(updateData),
+            headers: { 
+              'apikey': SUPABASE_SERVICE_ROLE_KEY, 
+              'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, 
+              'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify({ credits: userData2[0].credits + generation.credits_deducted }),
           });
-        } catch (updateError) {
-          console.log('Could not update database:', updateError);
         }
       }
-
-      return res.status(200).json({ 
-        prediction_id: predictionId, 
-        status: newStatus, 
-        video_url: replicateData.output || null,
-        error_message: replicateData.error || null
-      });
     }
 
-    // Already succeeded or failed
-    return res.status(200).json(generation);
-    
+    return res.status(200).json({ 
+      ...generation, 
+      status: newStatus, 
+      video_url: replicateData.output || generation.video_url 
+    });
+
   } catch (error: any) {
-    console.error('Status error:', error);
-    return res.status(500).json({ error: error.message });
+    console.error('Status Error:', error);
+    return res.status(500).json({ error: error.message || 'Internal server error' });
   }
 }
