@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Sparkles, Loader2, Download, Play, AlertCircle, Clock, Film } from 'lucide-react';
+import { Sparkles, Loader2, Download, Play, AlertCircle, Film } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { supabase } from '@/lib/supabase'; // ⭐ ADDED THIS IMPORT
 
 export default function VideoGenerator() {
   const [prompt, setPrompt] = useState('');
@@ -34,22 +35,24 @@ export default function VideoGenerator() {
     setPredictionId(null);
 
     try {
-      // Get auth token from localStorage or your auth system
-      const token = localStorage.getItem('vfxai.auth.token') || '';
+      // 1. Get the current session from Supabase
+      const { data: { session } } = await supabase.auth.getSession();
 
-      // Step 1: Call the generate API
+      // 2. Check if user is logged in
+      if (!session) {
+        setError('Please log in to generate videos!');
+        setLoading(false);
+        return;
+      }
+
+      // 3. Send the request WITH the Authorization header
       const response = await fetch('/api/video/generate', {
         method: 'POST',
-        headers: {
+        headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${session.access_token}` // ⭐ MAGIC LINE
         },
-        body: JSON.stringify({
-          modelId: 'runway-gen4-turbo',
-          prompt: prompt.trim(),
-          duration,
-          aspectRatio,
-        }),
+        body: JSON.stringify({ prompt, duration, aspectRatio }),
       });
 
       const data = await response.json();
@@ -61,8 +64,8 @@ export default function VideoGenerator() {
       setPredictionId(data.predictionId);
       setStatus('Video is being generated... This may take 1-2 minutes.');
 
-      // Step 2: Poll for completion
-      await pollForCompletion(data.predictionId, token);
+      // 4. Poll for completion, passing the real token
+      await pollForCompletion(data.predictionId, session.access_token);
 
     } catch (err: any) {
       setError(err.message || 'Generation failed');
@@ -78,7 +81,7 @@ export default function VideoGenerator() {
       try {
         const response = await fetch(`/api/video/status?id=${id}`, {
           headers: {
-            'Authorization': `Bearer ${token}`,
+            'Authorization': `Bearer ${token}`, // ⭐ MAGIC LINE
           },
         });
 
@@ -136,7 +139,7 @@ export default function VideoGenerator() {
             <p className="text-red-400/80 text-sm">{error}</p>
           </div>
           <button onClick={() => setError(null)} className="text-red-400 hover:text-red-300">
-            
+            ✕
           </button>
         </div>
       )}
